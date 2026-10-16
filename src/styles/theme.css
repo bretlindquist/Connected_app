@@ -1,0 +1,313 @@
+:root {
+  /* === SAFE AREA INSETS === */
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+
+  /* === V2 LUMINOUS EDITORIAL SURFACES (Hinge / Paired / Kinfolk Inspired) === */
+  --bg-canvas:           #FAF6F0;
+  --bg-canvas-gradient:  linear-gradient(165deg, #FCF9F5 0%, #F6EFE6 50%, #F9EFEA 100%);
+  --surface-card:        #FFFFFF;
+  --surface-subtle:      #F4EFEA;
+  --surface-blush:       #FDF2EE;
+  --surface-berry-tint:  #F8F1F5;
+  --surface-glass:       rgba(255, 255, 255, 0.86);
+
+  /* === BORDERS & HAIRLINES (Whisper-quiet, never harsh) === */
+  --border-hairline:     rgba(30, 22, 26, 0.08);
+  --border-subtle:       rgba(30, 22, 26, 0.12);
+  --border-accent:       rgba(224, 90, 71, 0.35);
+
+  /* === TYPOGRAPHY & INK HIERARCHY === */
+  --ink-primary:         #1E161A; /* Deep Velvet Espresso-Plum (16.4:1 AAA) */
+  --ink-secondary:       #5E5258; /* Warm Mauve-Charcoal (6.8:1 AA) */
+  --ink-muted:           #94878D; /* Soft Stone-Taupe for subtle hints */
+
+  /* === ROMANTIC MODERN ACCENT PALETTE === */
+  --accent-rose:         #E05A47; /* Warm Terracotta Rose (Primary Brand & CTA) */
+  --accent-rose-deep:    #C84331; /* Pressed Rose CTA state */
+  --accent-rose-soft:    rgba(224, 90, 71, 0.11);
+  --accent-berry:        #6E2E53; /* Deep Mulled Berry (Player B / Secondary Accent) */
+  --accent-berry-soft:   rgba(110, 46, 83, 0.10);
+  --accent-champagne:    #D4953A; /* Warm Champagne Gold (Favorites & Stars) */
+  --accent-champagne-soft: rgba(212, 149, 58, 0.14);
+  --accent-sage:         #2F7A5E; /* Fresh Botanical Emerald (Success / Verdicts) */
+  --accent-sage-soft:    rgba(47, 122, 94, 0.11);
+  --accent-cobalt:       #3B5BDB; /* Modern Indigo Ink (Sketch & Map Pin) */
+
+  /* === BACKWARD-COMPATIBLE ALIASES === */
+  --bg-table-obsidian:   #FAF6F0;
+  --bg-candle-vignette:  #F4EFEA;
+  --bg-surface-elevated: #FFFFFF;
+  --bg-surface-hover:    #F4EFEA;
+  --border-table-brass:  rgba(30, 22, 26, 0.09);
+  --paper-napkin-cream:  #FFFFFF;
+  --paper-polaroid-ivory:#FFFFFF;
+  --paper-aged-manila:   #F4EFEA;
+  --paper-coaster-rim:   rgba(30, 22, 26, 0.08);
+  --ink-charcoal:        #1E161A;
+  --ink-espresso:        #5E5258;
+  --ink-warm-stone:      #94878D;
+  --text-candle-cream:   #1E161A;
+  --text-amber-muted:    #5E5258;
+  --ink-vermilion:       #E05A47;
+  --ink-vermilion-deep:  #C84331;
+  --ink-marigold:        #D4953A;
+  --ink-olive:           #2F7A5E;
+  --ink-olive-bright:    #2F7A5E;
+  --ink-indigo:          #3B5BDB;
+  --ink-indigo-bright:   #3B5BDB;
+  --ink-plum:            #6E2E53;
+  --ink-plum-bright:     #9C4176;
+
+  /* === TYPOGRAPHY FAMILIES === */
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-sans:    'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-hand:    'Caveat', cursive;
+  --font-mono:    'JetBrains Mono', monospace;
+
+  /* === ELEVATION SHADOWS (Soft, Airy, Diffused) === */
+  --shadow-card-table:
+    0 2px 6px rgba(30, 22, 26, 0.03),
+    0 18px 42px -10px rgba(30, 22, 26, 0.08);
+  --shadow-card-selected:
+    0 4px 12px rgba(224, 90, 71, 0.08),
+    0 16px 36px -8px rgba(224, 90, 71, 0.16);
+  --shadow-floating-cta:
+    0 10px 28px -6px rgba(224, 90, 71, 0.42);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100dvh;
+  background-color: var(--bg-canvas);
+  color: var(--ink-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+#root {
+  width: 100%;
+  min-height: 100dvh;
+}
+
+/* Main App Shell with Luminous Silk & Rose/Champagne Ambient Glow */
+.app-shell,
+.app-root {
+  width: 100%;
+  min-height: 100dvh;
+  background:
+    radial-gradient(circle at 88% 8%, rgba(224, 90, 71, 0.09) 0%, transparent 45%),
+    radial-gradient(circle at 12% 88%, rgba(212, 149, 58, 0.09) 0%, transparent 48%),
+    var(--bg-canvas-gradient);
+  color: var(--ink-primary);
+}
+
+/* Prevent iOS Safari auto-zoom on form focus by keeping inputs >= 16px */
+input,
+textarea,
+select {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  color: var(--ink-primary);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--ink-muted);
+}
+
+button {
+  font-family: var(--font-sans);
+  cursor: pointer;
+  border: none;
+  background: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Crisp Pure Ivory Editorial Card Surface */
+.paper-card {
+  background: var(--surface-card);
+  color: var(--ink-primary);
+  border-radius: 24px;
+  border: 1px solid var(--border-hairline);
+  box-shadow: var(--shadow-card-table);
+  position: relative;
+}
+
+/* Soft Cashmere Subtle Container */
+.well-subtle {
+  background: var(--surface-subtle);
+  border-radius: 16px;
+  border: 1px solid rgba(30, 22, 26, 0.05);
+}
+
+/* Whisper Blush Highlight Container */
+.well-blush {
+  background: var(--surface-blush);
+  border-radius: 16px;
+  border: 1px solid rgba(224, 90, 71, 0.16);
+}
+
+/* Modern Editorial Pill Badge (Replaces harsh monospace ALL-CAPS stamps) */
+.stamp-badge {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 4px 11px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  line-height: 1.2;
+}
+
+/* Handwritten Note Style */
+.hand-note {
+  font-family: var(--font-hand);
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.22;
+}
+
+/* Gesture-Locked Interactive Zones */
+.drawing-canvas-lock,
+.pie-slider-lock,
+.map-interactive-zone {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Primary Magnetic Rose-Terracotta Pill Button */
+.btn-primary-brass {
+  background: linear-gradient(135deg, #E86452 0%, #D14836 100%);
+  color: #FFFFFF;
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 15.5px;
+  letter-spacing: -0.01em;
+  border-radius: 999px;
+  padding: 14px 22px;
+  box-shadow: var(--shadow-floating-cta);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-primary-brass:hover {
+  filter: brightness(1.03);
+}
+
+.btn-primary-brass:active {
+  transform: scale(0.98);
+}
+
+/* Secondary Cashmere Pill Button */
+.btn-paper-pill {
+  background: var(--surface-subtle);
+  color: var(--ink-primary);
+  border: 1px solid var(--border-hairline);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.btn-paper-pill:hover {
+  background: #EBE4DC;
+}
+
+.btn-paper-pill:active {
+  transform: scale(0.97);
+}
+
+/* Top-Bar / Ghost Frosted Pill Button */
+.btn-ghost-candle {
+  background: rgba(30, 22, 26, 0.055);
+  color: var(--ink-primary);
+  border: 1px solid rgba(30, 22, 26, 0.07);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.btn-ghost-candle:hover {
+  background: rgba(30, 22, 26, 0.09);
+}
+
+.btn-ghost-candle:active {
+  transform: scale(0.97);
+}
+
+/* Smooth Custom Scrollbar */
+.scroll-y-smooth {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.scroll-y-smooth::-webkit-scrollbar {
+  width: 5px;
+}
+
+.scroll-y-smooth::-webkit-scrollbar-thumb {
+  background: rgba(30, 22, 26, 0.14);
+  border-radius: 999px;
+}
+
+/* Animations */
+@keyframes spinVinyl {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes stampSlam {
+  0% {
+    opacity: 0;
+    transform: scale(1.25) rotate(-4deg);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(0.96) rotate(-2deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(-2deg);
+  }
+}
+
+/* Leaflet map container overrides */
+.leaflet-container {
+  font-family: var(--font-sans) !important;
+  background: #F4EFEA !important;
+}
