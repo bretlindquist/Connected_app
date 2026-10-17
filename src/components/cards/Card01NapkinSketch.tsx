@@ -7,7 +7,7 @@ interface Card01Props {
   mode: 'create' | 'reveal';
   data: NapkinSketchData;
   playerName: string;
-  partnerName: string;
+  partnerName?: string;
   onChange: (updated: NapkinSketchData) => void;
 }
 
@@ -29,7 +29,6 @@ export const Card01NapkinSketch: React.FC<Card01Props> = ({
   mode,
   data,
   playerName,
-  partnerName,
   onChange
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -245,7 +244,7 @@ export const Card01NapkinSketch: React.FC<Card01Props> = ({
               >
                 <Eye size={15} />
                 <span>
-                  Have {partnerName} guess first · Tap to reveal title
+                  Have the table guess first · Tap to reveal title
                 </span>
               </button>
             ) : (

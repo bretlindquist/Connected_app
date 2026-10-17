@@ -7,7 +7,7 @@ interface Card09Props {
   mode: 'create' | 'reveal';
   data: SpicyHillData;
   playerName: string;
-  partnerName: string;
+  partnerName?: string;
   onChange: (updated: SpicyHillData) => void;
 }
 
@@ -23,7 +23,6 @@ export const Card09SpicyHill: React.FC<Card09Props> = ({
   mode,
   data,
   playerName,
-  partnerName,
   onChange
 }) => {
   const handleRandomStarter = () => {
@@ -61,7 +60,8 @@ export const Card09SpicyHill: React.FC<Card09Props> = ({
                 color: '#FFFFFF'
               }}
             >
-              <Flame size={11} /> {playerName}’s Spicy Hill
+              <Flame size={11} />{' '}
+              {playerName === 'You' ? 'Your' : `${playerName}’s`} Spicy Hill
             </span>
           </div>
 
@@ -78,7 +78,7 @@ export const Card09SpicyHill: React.FC<Card09Props> = ({
             “{data.opinion || 'Ask me my hottest harmless opinion!'}”
           </div>
 
-          {/* Partner Reaction Stamps */}
+          {/* Table Reaction Stamps */}
           <div
             style={{
               borderTop: '1px solid rgba(224, 90, 71, 0.18)',
@@ -93,21 +93,22 @@ export const Card09SpicyHill: React.FC<Card09Props> = ({
                 marginBottom: 8
               }}
             >
-              {partnerName}, stamp your reaction to unlock {playerName}’s heat meter:
+              Table Verdict — stamp how the room reacts to unlock{' '}
+              {playerName === 'You' ? 'your' : `${playerName}’s`} heat meter:
             </div>
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: 10
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: 8
               }}
             >
               <button
                 type="button"
                 onClick={() => onChange({ ...data, partnerReaction: 'agree' })}
                 style={{
-                  padding: '12px',
-                  borderRadius: 999,
+                  padding: '10px 8px',
+                  borderRadius: 16,
                   border:
                     data.partnerReaction === 'agree'
                       ? '2px solid var(--accent-sage)'
@@ -121,11 +122,11 @@ export const Card09SpicyHill: React.FC<Card09Props> = ({
                       ? '#FFFFFF'
                       : 'var(--ink-primary)',
                   fontWeight: 700,
-                  fontSize: '0.84rem',
+                  fontSize: '0.76rem',
                   cursor: 'pointer'
                 }}
               >
-                🤝 100% Agree
+                🤝 Table Agrees
               </button>
 
               <button
@@ -134,8 +135,8 @@ export const Card09SpicyHill: React.FC<Card09Props> = ({
                   onChange({ ...data, partnerReaction: 'fight-me' })
                 }
                 style={{
-                  padding: '12px',
-                  borderRadius: 999,
+                  padding: '10px 8px',
+                  borderRadius: 16,
                   border:
                     data.partnerReaction === 'fight-me'
                       ? '2px solid var(--accent-rose)'
@@ -149,11 +150,39 @@ export const Card09SpicyHill: React.FC<Card09Props> = ({
                       ? '#FFFFFF'
                       : 'var(--ink-primary)',
                   fontWeight: 700,
-                  fontSize: '0.84rem',
+                  fontSize: '0.76rem',
                   cursor: 'pointer'
                 }}
               >
-                🥊 Fight Me On This
+                🥊 Fight Me
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  onChange({ ...data, partnerReaction: 'divided' })
+                }
+                style={{
+                  padding: '10px 8px',
+                  borderRadius: 16,
+                  border:
+                    data.partnerReaction === 'divided'
+                      ? '2px solid var(--accent-berry)'
+                      : '1px solid var(--border-subtle)',
+                  background:
+                    data.partnerReaction === 'divided'
+                      ? 'var(--accent-berry)'
+                      : '#FFFFFF',
+                  color:
+                    data.partnerReaction === 'divided'
+                      ? '#FFFFFF'
+                      : 'var(--ink-primary)',
+                  fontWeight: 700,
+                  fontSize: '0.76rem',
+                  cursor: 'pointer'
+                }}
+              >
+                🔥 Table Divided
               </button>
             </div>
           </div>
@@ -180,7 +209,8 @@ export const Card09SpicyHill: React.FC<Card09Props> = ({
                   letterSpacing: '0.04em'
                 }}
               >
-                {playerName}’s Self-Rated Spice Level
+                {playerName === 'You' ? 'Your' : `${playerName}’s`} Self-Rated
+                Spice Level
               </div>
               <div
                 style={{

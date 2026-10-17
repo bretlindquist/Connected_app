@@ -3,12 +3,12 @@ import {
   ArrowLeft,
   ArrowRight,
   Layers,
-  Sparkles,
   Award,
   Repeat,
+  UserPlus,
   MessageCircleHeart
 } from 'lucide-react';
-import { CardId, PlayerId, PlayerResponses, TableSessionState } from '../types/app';
+import { CardId, PlayerResponses, TableSessionState } from '../types/app';
 import { CARDS_VAULT } from '../data/cardsVault';
 
 import { Card01NapkinSketch } from './cards/Card01NapkinSketch';
@@ -26,9 +26,10 @@ import { Card11DealersChoice } from './cards/Card11DealersChoice';
 interface RevealDeckProps {
   session: TableSessionState;
   onUpdatePlayerResponses: (
-    player: PlayerId,
+    playerIndex: number,
     updater: (prev: PlayerResponses) => PlayerResponses
   ) => void;
+  onAddAnotherPlayerFromReveal: () => void;
   onOpenVaultDrawer: () => void;
   onFinishToKeepsake: () => void;
   onBackToLobby: () => void;
@@ -36,38 +37,68 @@ interface RevealDeckProps {
 
 interface RevealSlideItem {
   cardId: CardId;
-  owner: PlayerId | 'both';
+  playerIndex: number | 'all';
   stepLabel: string;
 }
+
+const PLAYER_PILL_STYLES = [
+  {
+    bg: 'var(--surface-blush)',
+    border: '1px solid rgba(224, 90, 71, 0.25)',
+    dot: 'var(--accent-rose)'
+  },
+  {
+    bg: 'var(--surface-berry-tint)',
+    border: '1px solid rgba(110, 46, 83, 0.25)',
+    dot: 'var(--accent-berry)'
+  },
+  {
+    bg: 'rgba(46, 109, 90, 0.1)',
+    border: '1px solid rgba(46, 109, 90, 0.25)',
+    dot: 'var(--accent-sage)'
+  },
+  {
+    bg: 'rgba(59, 91, 153, 0.1)',
+    border: '1px solid rgba(59, 91, 153, 0.25)',
+    dot: 'var(--accent-cobalt)'
+  }
+];
 
 export const RevealDeck: React.FC<RevealDeckProps> = ({
   session,
   onUpdatePlayerResponses,
+  onAddAnotherPlayerFromReveal,
   onOpenVaultDrawer,
   onFinishToKeepsake,
   onBackToLobby
 }) => {
-  const playerAName = session.playerA.name.trim() || 'Person 1';
-  const playerBName = session.playerB.name.trim() || 'Person 2';
+  const players = session.players;
+  const isSinglePhonePlayer = players.length === 1;
+
+  const getPlayerName = (idx: number) => {
+    const raw = players[idx]?.name?.trim();
+    if (raw) return raw;
+    return idx === 0 ? 'Your' : `Person ${idx + 1}`;
+  };
 
   const slides: RevealSlideItem[] = [];
-  session.activeCardIds.forEach((cardId, idx) => {
-    if (cardId === 'two-brains') {
+  session.activeCardIds.forEach((cardId, cardIdx) => {
+    if (cardId === 'two-brains' && players.length > 1) {
       slides.push({
         cardId,
-        owner: 'both',
-        stepLabel: `Round ${idx + 1} · Side-by-Side`
+        playerIndex: 'all',
+        stepLabel: `Card ${cardIdx + 1} · Side-by-Side`
       });
     } else {
-      slides.push({
-        cardId,
-        owner: 'playerA',
-        stepLabel: `Round ${idx + 1} · ${playerAName}`
-      });
-      slides.push({
-        cardId,
-        owner: 'playerB',
-        stepLabel: `Round ${idx + 1} · ${playerBName}`
+      players.forEach((_, pIdx) => {
+        const pName = players[pIdx]?.name?.trim() || (pIdx === 0 ? 'You' : `Person ${pIdx + 1}`);
+        slides.push({
+          cardId,
+          playerIndex: pIdx,
+          stepLabel: isSinglePhonePlayer
+            ? `Card ${cardIdx + 1} of ${session.activeCardIds.length}`
+            : `Card ${cardIdx + 1} · ${pName}`
+        });
       });
     }
   });
@@ -75,9 +106,10 @@ export const RevealDeck: React.FC<RevealDeckProps> = ({
   const [slideIndex, setSlideIndex] = useState(0);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
-  const currentSlide = slides[slideIndex] || slides[0];
+  const safeSlideIndex = Math.min(slideIndex, Math.max(0, slides.length - 1));
+  const currentSlide = slides[safeSlideIndex] || slides[0];
   const cardMeta = CARDS_VAULT[currentSlide.cardId];
-  const isLastSlide = slideIndex === slides.length - 1;
+  const isLastSlide = safeSlideIndex === slides.length - 1;
 
   const handleNext = () => {
     if (isLastSlide) {
@@ -104,20 +136,20 @@ export const RevealDeck: React.FC<RevealDeckProps> = ({
     const deltaX = e.changedTouches[0].clientX - touchStartX;
     setTouchStartX(null);
     if (Math.abs(deltaX) > 65) {
-      if (deltaX < 0 && slideIndex < slides.length - 1) {
+      if (deltaX < 0 && safeSlideIndex < slides.length - 1) {
         setSlideIndex((s) => s + 1);
-      } else if (deltaX > 0 && slideIndex > 0) {
+      } else if (deltaX > 0 && safeSlideIndex > 0) {
         setSlideIndex((s) => s - 1);
       }
     }
   };
 
   const renderSlideArtifact = () => {
-    const owner: PlayerId =
-      currentSlide.owner === 'playerB' ? 'playerB' : 'playerA';
-    const ownerObj = owner === 'playerA' ? session.playerA : session.playerB;
-    const ownerName = owner === 'playerA' ? playerAName : playerBName;
-    const listenerName = owner === 'playerA' ? playerBName : playerAName;
+    const activePIdx =
+      currentSlide.playerIndex === 'all' ? 0 : currentSlide.playerIndex;
+    const ownerObj = players[activePIdx] || players[0];
+    const ownerName =
+      ownerObj?.name?.trim() || (activePIdx === 0 ? 'You' : `Person ${activePIdx + 1}`);
     const resp = ownerObj.responses;
 
     switch (currentSlide.cardId) {
@@ -127,9 +159,8 @@ export const RevealDeck: React.FC<RevealDeckProps> = ({
             mode="reveal"
             data={resp['napkin-sketch']}
             playerName={ownerName}
-            partnerName={listenerName}
             onChange={(val) =>
-              onUpdatePlayerResponses(owner, (prev) => ({
+              onUpdatePlayerResponses(activePIdx, (prev) => ({
                 ...prev,
                 'napkin-sketch': val
               }))
@@ -142,9 +173,8 @@ export const RevealDeck: React.FC<RevealDeckProps> = ({
             mode="reveal"
             data={resp['camera-roll']}
             playerName={ownerName}
-            partnerName={listenerName}
             onChange={(val) =>
-              onUpdatePlayerResponses(owner, (prev) => ({
+              onUpdatePlayerResponses(activePIdx, (prev) => ({
                 ...prev,
                 'camera-roll': val
               }))
@@ -157,9 +187,8 @@ export const RevealDeck: React.FC<RevealDeckProps> = ({
             mode="reveal"
             data={resp['drop-pin']}
             playerName={ownerName}
-            partnerName={listenerName}
             onChange={(val) =>
-              onUpdatePlayerResponses(owner, (prev) => ({
+              onUpdatePlayerResponses(activePIdx, (prev) => ({
                 ...prev,
                 'drop-pin': val
               }))
@@ -172,9 +201,8 @@ export const RevealDeck: React.FC<RevealDeckProps> = ({
             mode="reveal"
             data={resp['memories-daydream']}
             playerName={ownerName}
-            partnerName={listenerName}
             onChange={(val) =>
-              onUpdatePlayerResponses(owner, (prev) => ({
+              onUpdatePlayerResponses(activePIdx, (prev) => ({
                 ...prev,
                 'memories-daydream': val
               }))
@@ -187,9 +215,8 @@ export const RevealDeck: React.FC<RevealDeckProps> = ({
             mode="reveal"
             data={resp['gut-read']}
             playerName={ownerName}
-            partnerName={listenerName}
             onChange={(val) =>
-              onUpdatePlayerResponses(owner, (prev) => ({
+              onUpdatePlayerResponses(activePIdx, (prev) => ({
                 ...prev,
                 'gut-read': val
               }))
@@ -202,9 +229,8 @@ export const RevealDeck: React.FC<RevealDeckProps> = ({
             mode="reveal"
             data={resp.soundtrack}
             playerName={ownerName}
-            partnerName={listenerName}
             onChange={(val) =>
-              onUpdatePlayerResponses(owner, (prev) => ({
+              onUpdatePlayerResponses(activePIdx, (prev) => ({
                 ...prev,
                 soundtrack: val
               }))
@@ -217,9 +243,8 @@ export const RevealDeck: React.FC<RevealDeckProps> = ({
             mode="reveal"
             data={resp['emoji-pitch']}
             playerName={ownerName}
-            partnerName={listenerName}
             onChange={(val) =>
-              onUpdatePlayerResponses(owner, (prev) => ({
+              onUpdatePlayerResponses(activePIdx, (prev) => ({
                 ...prev,
                 'emoji-pitch': val
               }))
@@ -232,9 +257,8 @@ export const RevealDeck: React.FC<RevealDeckProps> = ({
             mode="reveal"
             data={resp['brain-pie']}
             playerName={ownerName}
-            partnerName={listenerName}
             onChange={(val) =>
-              onUpdatePlayerResponses(owner, (prev) => ({
+              onUpdatePlayerResponses(activePIdx, (prev) => ({
                 ...prev,
                 'brain-pie': val
               }))
@@ -247,9 +271,8 @@ export const RevealDeck: React.FC<RevealDeckProps> = ({
             mode="reveal"
             data={resp['spicy-hill']}
             playerName={ownerName}
-            partnerName={listenerName}
             onChange={(val) =>
-              onUpdatePlayerResponses(owner, (prev) => ({
+              onUpdatePlayerResponses(activePIdx, (prev) => ({
                 ...prev,
                 'spicy-hill': val
               }))
@@ -261,12 +284,11 @@ export const RevealDeck: React.FC<RevealDeckProps> = ({
           <Card10TwoBrains
             mode="reveal"
             sharedPrompt={session.sharedTwoBrainsPrompt}
-            data={session.playerA.responses['two-brains']}
-            partnerData={session.playerB.responses['two-brains']}
-            playerName={playerAName}
-            partnerName={playerBName}
+            data={ownerObj.responses['two-brains']}
+            allPlayers={players}
+            playerName={ownerName}
             onChange={(val) =>
-              onUpdatePlayerResponses('playerA', (prev) => ({
+              onUpdatePlayerResponses(activePIdx, (prev) => ({
                 ...prev,
                 'two-brains': val
               }))
@@ -279,9 +301,8 @@ export const RevealDeck: React.FC<RevealDeckProps> = ({
             mode="reveal"
             data={resp['dealers-choice']}
             playerName={ownerName}
-            partnerName={listenerName}
             onChange={(val) =>
-              onUpdatePlayerResponses(owner, (prev) => ({
+              onUpdatePlayerResponses(activePIdx, (prev) => ({
                 ...prev,
                 'dealers-choice': val
               }))
@@ -289,6 +310,32 @@ export const RevealDeck: React.FC<RevealDeckProps> = ({
           />
         );
     }
+  };
+
+  const currentPillStyle =
+    currentSlide.playerIndex === 'all'
+      ? {
+          bg: '#FFFFFF',
+          border: '1px solid var(--border-subtle)',
+          dot: 'var(--accent-cobalt)'
+        }
+      : PLAYER_PILL_STYLES[
+          currentSlide.playerIndex % PLAYER_PILL_STYLES.length
+        ];
+
+  const currentSpeakerLabel = () => {
+    if (currentSlide.playerIndex === 'all') {
+      return `${players
+        .map((p, i) => p.name.trim() || `Person ${i + 1}`)
+        .join(' · ')} · Side-by-Side`;
+    }
+    const rawName = players[currentSlide.playerIndex]?.name?.trim();
+    if (isSinglePhonePlayer) {
+      return rawName
+        ? `${rawName}’s Deck · Show the Table`
+        : 'Your Deck · Show the Table';
+    }
+    return `${rawName || `Person ${currentSlide.playerIndex + 1}`}’s Story`;
   };
 
   return (
@@ -327,7 +374,9 @@ export const RevealDeck: React.FC<RevealDeckProps> = ({
             color: 'var(--ink-secondary)'
           }}
         >
-          Reveal {slideIndex + 1} of {slides.length}
+          {isSinglePhonePlayer
+            ? `Card ${safeSlideIndex + 1} of ${slides.length}`
+            : `Reveal ${safeSlideIndex + 1} of ${slides.length}`}
         </span>
 
         <button
@@ -349,18 +398,8 @@ export const RevealDeck: React.FC<RevealDeckProps> = ({
           justifyContent: 'space-between',
           padding: '10px 16px',
           borderRadius: 999,
-          background:
-            currentSlide.owner === 'both'
-              ? '#FFFFFF'
-              : currentSlide.owner === 'playerA'
-              ? 'var(--surface-blush)'
-              : 'var(--surface-berry-tint)',
-          border:
-            currentSlide.owner === 'both'
-              ? '1px solid var(--border-subtle)'
-              : currentSlide.owner === 'playerA'
-              ? '1px solid rgba(224, 90, 71, 0.25)'
-              : '1px solid rgba(110, 46, 83, 0.25)',
+          background: currentPillStyle.bg,
+          border: currentPillStyle.border,
           boxShadow: 'var(--shadow-pill)'
         }}
       >
@@ -370,12 +409,7 @@ export const RevealDeck: React.FC<RevealDeckProps> = ({
               width: 9,
               height: 9,
               borderRadius: '50%',
-              background:
-                currentSlide.owner === 'both'
-                  ? 'var(--accent-cobalt)'
-                  : currentSlide.owner === 'playerA'
-                  ? 'var(--accent-rose)'
-                  : 'var(--accent-berry)'
+              background: currentPillStyle.dot
             }}
           />
           <span
@@ -385,25 +419,23 @@ export const RevealDeck: React.FC<RevealDeckProps> = ({
               color: 'var(--ink-primary)'
             }}
           >
-            {currentSlide.owner === 'both'
-              ? `${playerAName} & ${playerBName} · Side-by-Side`
-              : currentSlide.owner === 'playerA'
-              ? `${playerAName}’s Story`
-              : `${playerBName}’s Story`}
+            {currentSpeakerLabel()}
           </span>
         </div>
 
-        {/* Quick Toggle Between Person 1 and Person 2 for Same Card */}
-        {currentSlide.owner !== 'both' && (
+        {/* If multiple players shared this phone, cycle between them for the same card */}
+        {!isSinglePhonePlayer && currentSlide.playerIndex !== 'all' ? (
           <button
             type="button"
             onClick={() => {
-              const partnerSlideIdx = slides.findIndex(
+              const nextPlayerForCard =
+                ((currentSlide.playerIndex as number) + 1) % players.length;
+              const targetIdx = slides.findIndex(
                 (s) =>
                   s.cardId === currentSlide.cardId &&
-                  s.owner !== currentSlide.owner
+                  s.playerIndex === nextPlayerForCard
               );
-              if (partnerSlideIdx !== -1) setSlideIndex(partnerSlideIdx);
+              if (targetIdx !== -1) setSlideIndex(targetIdx);
             }}
             style={{
               background: '#FFFFFF',
@@ -421,9 +453,32 @@ export const RevealDeck: React.FC<RevealDeckProps> = ({
           >
             <Repeat size={11} color="var(--accent-rose)" />
             <span>
-              See{' '}
-              {currentSlide.owner === 'playerA' ? playerBName : playerAName}’s
+              Next:{' '}
+              {getPlayerName(
+                ((currentSlide.playerIndex as number) + 1) % players.length
+              )}
             </span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={onAddAnotherPlayerFromReveal}
+            style={{
+              background: '#FFFFFF',
+              border: '1px solid var(--border-subtle)',
+              color: 'var(--ink-primary)',
+              borderRadius: 999,
+              padding: '4px 10px',
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              cursor: 'pointer'
+            }}
+          >
+            <UserPlus size={11} color="var(--accent-berry)" />
+            <span>+ Pass Phone</span>
           </button>
         )}
       </div>
@@ -511,22 +566,23 @@ export const RevealDeck: React.FC<RevealDeckProps> = ({
           display: 'flex',
           justifyContent: 'center',
           gap: 6,
-          padding: '4px 0'
+          padding: '4px 0',
+          flexWrap: 'wrap'
         }}
       >
         {slides.map((s, idx) => (
           <button
-            key={`${s.cardId}-${s.owner}-${idx}`}
+            key={`${s.cardId}-${s.playerIndex}-${idx}`}
             type="button"
             onClick={() => setSlideIndex(idx)}
             aria-label={`Go to slide ${idx + 1}`}
             style={{
-              width: idx === slideIndex ? 22 : 7,
+              width: idx === safeSlideIndex ? 22 : 7,
               height: 7,
               borderRadius: 999,
               border: 'none',
               background:
-                idx === slideIndex
+                idx === safeSlideIndex
                   ? 'var(--accent-rose)'
                   : 'rgba(30, 22, 26, 0.16)',
               transition: 'all 0.2s ease',
@@ -542,12 +598,12 @@ export const RevealDeck: React.FC<RevealDeckProps> = ({
         <button
           type="button"
           onClick={handlePrev}
-          disabled={slideIndex === 0}
+          disabled={safeSlideIndex === 0}
           className="btn-ghost-candle"
           style={{
             padding: '14px 18px',
-            opacity: slideIndex === 0 ? 0.4 : 1,
-            cursor: slideIndex === 0 ? 'default' : 'pointer'
+            opacity: safeSlideIndex === 0 ? 0.4 : 1,
+            cursor: safeSlideIndex === 0 ? 'default' : 'pointer'
           }}
         >
           <ArrowLeft size={16} />
@@ -563,11 +619,11 @@ export const RevealDeck: React.FC<RevealDeckProps> = ({
           {isLastSlide ? (
             <>
               <Award size={18} />
-              <span>View Souvenir Postcard</span>
+              <span>View Table Souvenir Postcard</span>
             </>
           ) : (
             <>
-              <span>Next Reveal</span>
+              <span>Next Card</span>
               <ArrowRight size={18} />
             </>
           )}

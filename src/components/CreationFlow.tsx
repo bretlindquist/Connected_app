@@ -3,15 +3,18 @@ import {
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
-  EyeOff,
   Sparkles,
   Copy,
   Check,
   QrCode,
-  Send
+  Send,
+  UserPlus,
+  Users,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { CardId, PlayerId, PlayerResponses, TableSessionState } from '../types/app';
+import { CardId, PlayerResponses, TableSessionState } from '../types/app';
 import { CARDS_VAULT } from '../data/cardsVault';
 import { TimerBar } from './TimerBar';
 import {
@@ -34,173 +37,85 @@ import { Card11DealersChoice } from './cards/Card11DealersChoice';
 
 interface CreationFlowProps {
   session: TableSessionState;
-  activePlayer: PlayerId;
+  activePlayerIndex: number;
   cardIndex: number;
-  isHandoffScreen: boolean;
-  isTwoPhoneSyncScreen: boolean;
+  isReadyToShareScreen: boolean;
   onUpdatePlayerResponses: (
-    player: PlayerId,
+    playerIndex: number,
     updater: (prev: PlayerResponses) => PlayerResponses
   ) => void;
+  onChangeSharedTwoBrainsPrompt: (prompt: string) => void;
   onNextCard: () => void;
   onPrevCard: () => void;
-  onConfirmHandoffToB: () => void;
-  onImportPartnerResponses: (
-    partnerName: string,
+  onAddAnotherPlayerOnSamePhone: (newPlayerName: string) => void;
+  onImportExternalPlayerResponses: (
+    importedName: string,
     responses: PlayerResponses
   ) => void;
   onProceedToReveal: () => void;
   onExitToLobby: () => void;
 }
 
+const PLAYER_BADGE_COLORS = [
+  {
+    bg: 'var(--surface-blush)',
+    border: 'rgba(224, 90, 71, 0.25)',
+    dot: 'var(--accent-rose)'
+  },
+  {
+    bg: 'var(--surface-berry-tint)',
+    border: 'rgba(110, 46, 83, 0.22)',
+    dot: 'var(--accent-berry)'
+  },
+  {
+    bg: 'rgba(46, 109, 90, 0.1)',
+    border: 'rgba(46, 109, 90, 0.24)',
+    dot: 'var(--accent-sage)'
+  },
+  {
+    bg: 'rgba(59, 91, 153, 0.1)',
+    border: 'rgba(59, 91, 153, 0.24)',
+    dot: 'var(--accent-cobalt)'
+  }
+];
+
 export const CreationFlow: React.FC<CreationFlowProps> = ({
   session,
-  activePlayer,
+  activePlayerIndex,
   cardIndex,
-  isHandoffScreen,
-  isTwoPhoneSyncScreen,
+  isReadyToShareScreen,
   onUpdatePlayerResponses,
+  onChangeSharedTwoBrainsPrompt,
   onNextCard,
   onPrevCard,
-  onConfirmHandoffToB,
-  onImportPartnerResponses,
+  onAddAnotherPlayerOnSamePhone,
+  onImportExternalPlayerResponses,
   onProceedToReveal,
   onExitToLobby
 }) => {
   const [timerPaused, setTimerPaused] = useState(false);
+  const [nextPlayerName, setNextPlayerName] = useState('');
+  const [showAddPlayerInput, setShowAddPlayerInput] = useState(false);
+  const [showTableQrTools, setShowTableQrTools] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [partnerCodeInput, setPartnerCodeInput] = useState('');
   const [importError, setImportError] = useState('');
-  const [partnerImported, setPartnerImported] = useState(false);
+  const [partnerImportedName, setPartnerImportedName] = useState('');
 
-  const playerObj =
-    activePlayer === 'playerA' ? session.playerA : session.playerB;
-  const partnerObj =
-    activePlayer === 'playerA' ? session.playerB : session.playerA;
+  const playerObj = session.players[activePlayerIndex] || session.players[0];
   const playerName =
-    playerObj.name.trim() ||
-    (activePlayer === 'playerA' ? 'Person 1' : 'Person 2');
-  const partnerName =
-    partnerObj.name.trim() ||
-    (activePlayer === 'playerA' ? 'Person 2' : 'Person 1');
+    playerObj?.name?.trim() ||
+    (activePlayerIndex === 0 ? 'You' : `Person ${activePlayerIndex + 1}`);
+  const badgeStyle =
+    PLAYER_BADGE_COLORS[activePlayerIndex % PLAYER_BADGE_COLORS.length];
 
-  // 1. Privacy Handoff Screen (Single-Phone Pass-Across Mode)
-  if (isHandoffScreen) {
-    return (
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          minHeight: '82dvh',
-          padding: '16px 0'
-        }}
-      >
-        <div
-          className="paper-card"
-          style={{
-            padding: '34px 24px',
-            textAlign: 'center',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: 16
-          }}
-        >
-          <div
-            style={{
-              width: 68,
-              height: 68,
-              borderRadius: '50%',
-              background: 'var(--surface-blush)',
-              border: '1.5px solid var(--border-accent)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--accent-rose)'
-            }}
-          >
-            <EyeOff size={30} />
-          </div>
-
-          <span
-            className="stamp-badge"
-            style={{
-              background: 'var(--accent-rose-soft)',
-              color: 'var(--accent-rose-deep)'
-            }}
-          >
-            {session.playerA.name || 'Person 1'}’s Cards Are Sealed
-          </span>
-
-          <h2
-            className="font-display"
-            style={{
-              margin: 0,
-              fontSize: '1.85rem',
-              lineHeight: 1.15,
-              color: 'var(--ink-primary)'
-            }}
-          >
-            Slide the phone across to{' '}
-            <span style={{ color: 'var(--accent-berry)', fontStyle: 'italic' }}>
-              {session.playerB.name || 'Person 2'}
-            </span>
-          </h2>
-
-          <p
-            style={{
-              margin: 0,
-              fontSize: '0.94rem',
-              color: 'var(--ink-secondary)',
-              lineHeight: 1.55,
-              maxWidth: 340
-            }}
-          >
-            {session.playerA.name || 'Person 1'}’s sketches and stories are tucked inside the envelope. Now{' '}
-            <strong>{session.playerB.name || 'Person 2'}</strong> gets the same{' '}
-            {session.activeCardIds.length}{' '}
-            {session.activeCardIds.length === 1 ? 'card' : 'cards'} before you reveal everything together!
-          </p>
-
-          <button
-            type="button"
-            onClick={onConfirmHandoffToB}
-            className="btn-primary-brass"
-            style={{ width: '100%', marginTop: 8 }}
-          >
-            <Sparkles size={18} />
-            <span>
-              I’m {session.playerB.name || 'Person 2'} — Deal My Cards
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={onProceedToReveal}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--ink-muted)',
-              fontSize: '0.8rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-              padding: '6px 10px'
-            }}
-          >
-            Skip {session.playerB.name || 'Person 2'}’s sprint &amp; reveal right now →
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // 2. Two-Phone Sync Screen
-  if (isTwoPhoneSyncScreen) {
+  // 1. Ready-to-Share / Pass-the-Phone Table Hub
+  if (isReadyToShareScreen) {
+    const ownerPlayer = session.players[0];
     const myDeckCode = encodePartnerDeckCode(
-      session.playerA.name || 'Person 1',
-      session.playerA.responses
+      ownerPlayer?.name?.trim() || 'Player 1',
+      ownerPlayer.responses
     );
     const fullShareUrl = buildShareableUrlWithSession(session);
 
@@ -210,7 +125,7 @@ export const CreationFlow: React.FC<CreationFlowProps> = ({
         setCopiedCode(true);
         setTimeout(() => setCopiedCode(false), 2500);
       } catch {
-        // Fallback ignored
+        // Ignore clipboard errors
       }
     };
 
@@ -220,7 +135,7 @@ export const CreationFlow: React.FC<CreationFlowProps> = ({
         setCopiedLink(true);
         setTimeout(() => setCopiedLink(false), 2500);
       } catch {
-        // Fallback ignored
+        // Ignore clipboard errors
       }
     };
 
@@ -233,207 +148,373 @@ export const CreationFlow: React.FC<CreationFlowProps> = ({
         );
         return;
       }
-      onImportPartnerResponses(decoded.playerName, decoded.responses);
-      setPartnerImported(true);
+      onImportExternalPlayerResponses(decoded.playerName, decoded.responses);
+      setPartnerImportedName(decoded.playerName);
+      setPartnerCodeInput('');
     };
+
+    const handleStartNextPerson = () => {
+      const nameToUse =
+        nextPlayerName.trim() || `Person ${session.players.length + 1}`;
+      setNextPlayerName('');
+      setShowAddPlayerInput(false);
+      onAddAnotherPlayerOnSamePhone(nameToUse);
+    };
+
+    const allNamesLabel = session.players
+      .map((p, idx) => p.name.trim() || (idx === 0 ? 'You' : `Person ${idx + 1}`))
+      .join(' · ');
 
     return (
       <div
         style={{
           display: 'flex',
           flexDirection: 'column',
-          gap: 16,
-          padding: '10px 0 36px'
+          justifyContent: 'center',
+          minHeight: '80dvh',
+          padding: '14px 0 32px'
         }}
       >
         <div
           className="paper-card"
           style={{
-            padding: '22px 18px',
+            padding: '28px 22px',
             display: 'flex',
             flexDirection: 'column',
+            alignItems: 'center',
+            textAlign: 'center',
             gap: 16
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span
-              className="stamp-badge"
-              style={{
-                background: 'var(--accent-rose-soft)',
-                color: 'var(--accent-rose-deep)'
-              }}
-            >
-              <QrCode size={12} /> Two-Phone Table Sync
-            </span>
+          <div
+            style={{
+              width: 64,
+              height: 64,
+              borderRadius: '50%',
+              background: 'var(--surface-blush)',
+              border: '1.5px solid var(--border-accent)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--accent-rose)'
+            }}
+          >
+            <Sparkles size={28} />
           </div>
+
+          <span
+            className="stamp-badge"
+            style={{
+              background: 'var(--accent-rose-soft)',
+              color: 'var(--accent-rose-deep)'
+            }}
+          >
+            {session.players.length === 1
+              ? `${playerName}’s Deck Is Ready`
+              : `${session.players.length} Decks Sealed on This Phone`}
+          </span>
 
           <h2
             className="font-display"
-            style={{ margin: 0, fontSize: '1.5rem', lineHeight: 1.2 }}
+            style={{
+              margin: 0,
+              fontSize: '1.8rem',
+              lineHeight: 1.15,
+              color: 'var(--ink-primary)'
+            }}
           >
-            Bring Both Decks to One Table
+            Ready for the{' '}
+            <span style={{ color: 'var(--accent-rose)', fontStyle: 'italic' }}>
+              table reveal!
+            </span>
           </h2>
+
           <p
             style={{
               margin: 0,
-              fontSize: '0.86rem',
+              fontSize: '0.92rem',
               color: 'var(--ink-secondary)',
-              lineHeight: 1.48
+              lineHeight: 1.5,
+              maxWidth: 360
             }}
           >
-            Send your deck link to {partnerName}, or paste their sync code below so you can slide one phone into the center and swipe through both decks together.
+            {session.players.length === 1
+              ? 'If everyone at the table is playing on their own phone, slide your phones out and take turns swiping through your cards one by one!'
+              : `Locked in on this phone: ${allNamesLabel}. Ready to reveal everyone’s cards together, or pass the phone to one more person?`}
           </p>
 
-          {/* QR Code & Link Share */}
-          <div
-            style={{
-              background: 'var(--surface-subtle)',
-              borderRadius: 20,
-              padding: 16,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 12
-            }}
+          {/* Primary Action: Open Reveal Deck Immediately */}
+          <button
+            type="button"
+            onClick={onProceedToReveal}
+            className="btn-primary-brass"
+            style={{ width: '100%', marginTop: 4 }}
           >
-            <div
-              style={{
-                background: '#FFFFFF',
-                padding: 12,
-                borderRadius: 16,
-                boxShadow: 'var(--shadow-pill)'
-              }}
-            >
-              <QRCodeSVG
-                value={fullShareUrl.slice(0, 1800)}
-                size={140}
-                bgColor="#FFFFFF"
-                fgColor="#1E161A"
-              />
-            </div>
+            <Sparkles size={18} />
+            <span>Slide Phone Out &amp; Swipe Through →</span>
+          </button>
 
-            <div style={{ display: 'flex', gap: 8, width: '100%' }}>
-              <button
-                type="button"
-                onClick={handleCopyLink}
-                className="btn-paper-pill"
-                style={{ flex: 1, fontSize: '0.78rem' }}
-              >
-                {copiedLink ? <Check size={14} /> : <Send size={14} />}
-                <span>{copiedLink ? 'Link Copied!' : 'Copy Table Link'}</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleCopyCode}
-                className="btn-paper-pill"
-                style={{ flex: 1, fontSize: '0.78rem' }}
-              >
-                {copiedCode ? <Check size={14} /> : <Copy size={14} />}
-                <span>{copiedCode ? 'Code Copied!' : 'Copy My Deck Code'}</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Paste Partner Code */}
+          {/* Secondary Action: Someone Else Sharing This Phone? */}
           <div
             style={{
-              background: '#FFFFFF',
+              width: '100%',
+              background: 'var(--surface-subtle)',
               borderRadius: 18,
               padding: 14,
               border: '1px solid var(--border-subtle)',
               display: 'flex',
               flexDirection: 'column',
-              gap: 8
+              gap: 10,
+              textAlign: 'left'
             }}
           >
-            <label
-              style={{
-                fontSize: '0.76rem',
-                fontWeight: 700,
-                color: 'var(--ink-secondary)'
-              }}
-            >
-              Have {partnerName}’s Deck Code? Paste to Merge:
-            </label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input
-                type="text"
-                value={partnerCodeInput}
-                onChange={(e) => setPartnerCodeInput(e.target.value)}
-                placeholder="Paste partner sync code..."
-                className="paper-input"
-                style={{ flex: 1, fontSize: '0.84rem', padding: '9px 12px' }}
-              />
+            {!showAddPlayerInput ? (
               <button
                 type="button"
-                onClick={handleMergeCode}
+                onClick={() => setShowAddPlayerInput(true)}
                 className="btn-paper-pill"
                 style={{
-                  background: 'var(--ink-primary)',
-                  color: '#FFFFFF',
-                  flexShrink: 0
+                  width: '100%',
+                  justifyContent: 'center',
+                  padding: '11px 14px',
+                  fontSize: '0.84rem'
                 }}
               >
-                Merge
+                <UserPlus size={15} color="var(--accent-berry)" />
+                <span>
+                  Sharing this phone? Pass to Person #{session.players.length + 1}
+                </span>
               </button>
-            </div>
-            {importError && (
-              <span
-                style={{
-                  fontSize: '0.76rem',
-                  color: 'var(--accent-rose-deep)',
-                  fontWeight: 600
-                }}
-              >
-                {importError}
-              </span>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <label
+                  style={{
+                    fontSize: '0.74rem',
+                    fontWeight: 700,
+                    letterSpacing: '0.06em',
+                    textTransform: 'uppercase',
+                    color: 'var(--accent-berry)'
+                  }}
+                >
+                  Next Person’s Name (Person #{session.players.length + 1})
+                </label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    type="text"
+                    value={nextPlayerName}
+                    onChange={(e) => setNextPlayerName(e.target.value)}
+                    placeholder={`e.g., Jordan, Taylor...`}
+                    className="paper-input"
+                    style={{ flex: 1, fontSize: '0.9rem', padding: '10px 14px' }}
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={handleStartNextPerson}
+                    className="btn-paper-pill"
+                    style={{
+                      background: 'var(--accent-berry)',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      padding: '10px 16px',
+                      flexShrink: 0
+                    }}
+                  >
+                    Start Turn →
+                  </button>
+                </div>
+              </div>
             )}
-            {partnerImported && (
-              <span
+
+            {session.players.length > 1 && (
+              <div
                 style={{
-                  fontSize: '0.8rem',
-                  color: 'var(--accent-sage)',
-                  fontWeight: 700
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  flexWrap: 'wrap',
+                  paddingTop: 2
                 }}
               >
-                ✓ Partner deck merged! Ready to slide &amp; swipe together.
-              </span>
+                <Users size={13} color="var(--ink-muted)" />
+                <span
+                  style={{
+                    fontSize: '0.75rem',
+                    color: 'var(--ink-secondary)',
+                    fontWeight: 600
+                  }}
+                >
+                  On this phone ({session.players.length}): {allNamesLabel}
+                </span>
+              </div>
             )}
           </div>
 
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 8,
-              marginTop: 4
-            }}
-          >
+          {/* Optional Table QR / Link / Deck Sync Tools */}
+          <div style={{ width: '100%' }}>
             <button
               type="button"
-              onClick={onProceedToReveal}
-              className="btn-primary-brass"
-              style={{ width: '100%' }}
+              onClick={() => setShowTableQrTools((prev) => !prev)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--ink-muted)',
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+                padding: '4px 8px'
+              }}
             >
-              <Sparkles size={17} />
-              <span>Open Shared Reveal Deck →</span>
+              <QrCode size={13} />
+              <span>
+                {showTableQrTools
+                  ? 'Hide QR & Table Sync Tools'
+                  : 'Invite table via QR link or merge another phone'}
+              </span>
+              {showTableQrTools ? (
+                <ChevronUp size={13} />
+              ) : (
+                <ChevronDown size={13} />
+              )}
             </button>
 
-            <button
-              type="button"
-              onClick={onConfirmHandoffToB}
-              className="btn-paper-pill"
-              style={{ width: '100%' }}
-            >
-              Or pass THIS phone to {partnerName} instead
-            </button>
+            {showTableQrTools && (
+              <div
+                style={{
+                  marginTop: 10,
+                  background: 'var(--surface-subtle)',
+                  borderRadius: 18,
+                  padding: 14,
+                  border: '1px solid var(--border-subtle)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 12,
+                  textAlign: 'left'
+                }}
+              >
+                <div
+                  style={{
+                    background: '#FFFFFF',
+                    padding: 10,
+                    borderRadius: 14,
+                    boxShadow: 'var(--shadow-pill)'
+                  }}
+                >
+                  <QRCodeSVG
+                    value={fullShareUrl.slice(0, 1800)}
+                    size={124}
+                    bgColor="#FFFFFF"
+                    fgColor="#1E161A"
+                  />
+                </div>
+                <span
+                  style={{
+                    fontSize: '0.76rem',
+                    color: 'var(--ink-secondary)',
+                    textAlign: 'center'
+                  }}
+                >
+                  Anyone at the table can scan to open this exact card pack on their own phone.
+                </span>
+
+                <div style={{ display: 'flex', gap: 8, width: '100%' }}>
+                  <button
+                    type="button"
+                    onClick={handleCopyLink}
+                    className="btn-paper-pill"
+                    style={{ flex: 1, fontSize: '0.76rem' }}
+                  >
+                    {copiedLink ? <Check size={13} /> : <Send size={13} />}
+                    <span>{copiedLink ? 'Link Copied!' : 'Copy Pack Link'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCopyCode}
+                    className="btn-paper-pill"
+                    style={{ flex: 1, fontSize: '0.76rem' }}
+                  >
+                    {copiedCode ? <Check size={13} /> : <Copy size={13} />}
+                    <span>{copiedCode ? 'Code Copied!' : 'Copy My Deck Code'}</span>
+                  </button>
+                </div>
+
+                <div
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 6,
+                    paddingTop: 6,
+                    borderTop: '1px solid var(--border-subtle)'
+                  }}
+                >
+                  <label
+                    style={{
+                      fontSize: '0.74rem',
+                      fontWeight: 700,
+                      color: 'var(--ink-secondary)'
+                    }}
+                  >
+                    Optional — Paste someone’s Deck Code to combine on this phone:
+                  </label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      type="text"
+                      value={partnerCodeInput}
+                      onChange={(e) => setPartnerCodeInput(e.target.value)}
+                      placeholder="Paste deck code..."
+                      className="paper-input"
+                      style={{ flex: 1, fontSize: '0.82rem', padding: '8px 12px' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleMergeCode}
+                      className="btn-paper-pill"
+                      style={{
+                        background: 'var(--ink-primary)',
+                        color: '#FFFFFF',
+                        flexShrink: 0
+                      }}
+                    >
+                      Add
+                    </button>
+                  </div>
+                  {importError && (
+                    <span
+                      style={{
+                        fontSize: '0.75rem',
+                        color: 'var(--accent-rose-deep)',
+                        fontWeight: 600
+                      }}
+                    >
+                      {importError}
+                    </span>
+                  )}
+                  {partnerImportedName && (
+                    <span
+                      style={{
+                        fontSize: '0.78rem',
+                        color: 'var(--accent-sage)',
+                        fontWeight: 700
+                      }}
+                    >
+                      ✓ Added {partnerImportedName}’s deck to this phone!
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
     );
   }
 
-  // 3. Standard Card Creation Sprint
+  // 2. Standard Card Creation Sprint
   const currentCardId: CardId =
     session.activeCardIds[cardIndex] || 'napkin-sketch';
   const cardMeta = CARDS_VAULT[currentCardId];
@@ -449,9 +530,8 @@ export const CreationFlow: React.FC<CreationFlowProps> = ({
             mode="create"
             data={resp['napkin-sketch']}
             playerName={playerName}
-            partnerName={partnerName}
             onChange={(val) =>
-              onUpdatePlayerResponses(activePlayer, (prev) => ({
+              onUpdatePlayerResponses(activePlayerIndex, (prev) => ({
                 ...prev,
                 'napkin-sketch': val
               }))
@@ -464,10 +544,9 @@ export const CreationFlow: React.FC<CreationFlowProps> = ({
             mode="create"
             data={resp['camera-roll']}
             playerName={playerName}
-            partnerName={partnerName}
             onPauseTimer={setTimerPaused}
             onChange={(val) =>
-              onUpdatePlayerResponses(activePlayer, (prev) => ({
+              onUpdatePlayerResponses(activePlayerIndex, (prev) => ({
                 ...prev,
                 'camera-roll': val
               }))
@@ -480,9 +559,8 @@ export const CreationFlow: React.FC<CreationFlowProps> = ({
             mode="create"
             data={resp['drop-pin']}
             playerName={playerName}
-            partnerName={partnerName}
             onChange={(val) =>
-              onUpdatePlayerResponses(activePlayer, (prev) => ({
+              onUpdatePlayerResponses(activePlayerIndex, (prev) => ({
                 ...prev,
                 'drop-pin': val
               }))
@@ -495,9 +573,8 @@ export const CreationFlow: React.FC<CreationFlowProps> = ({
             mode="create"
             data={resp['memories-daydream']}
             playerName={playerName}
-            partnerName={partnerName}
             onChange={(val) =>
-              onUpdatePlayerResponses(activePlayer, (prev) => ({
+              onUpdatePlayerResponses(activePlayerIndex, (prev) => ({
                 ...prev,
                 'memories-daydream': val
               }))
@@ -510,9 +587,8 @@ export const CreationFlow: React.FC<CreationFlowProps> = ({
             mode="create"
             data={resp['gut-read']}
             playerName={playerName}
-            partnerName={partnerName}
             onChange={(val) =>
-              onUpdatePlayerResponses(activePlayer, (prev) => ({
+              onUpdatePlayerResponses(activePlayerIndex, (prev) => ({
                 ...prev,
                 'gut-read': val
               }))
@@ -525,9 +601,8 @@ export const CreationFlow: React.FC<CreationFlowProps> = ({
             mode="create"
             data={resp.soundtrack}
             playerName={playerName}
-            partnerName={partnerName}
             onChange={(val) =>
-              onUpdatePlayerResponses(activePlayer, (prev) => ({
+              onUpdatePlayerResponses(activePlayerIndex, (prev) => ({
                 ...prev,
                 soundtrack: val
               }))
@@ -540,9 +615,8 @@ export const CreationFlow: React.FC<CreationFlowProps> = ({
             mode="create"
             data={resp['emoji-pitch']}
             playerName={playerName}
-            partnerName={partnerName}
             onChange={(val) =>
-              onUpdatePlayerResponses(activePlayer, (prev) => ({
+              onUpdatePlayerResponses(activePlayerIndex, (prev) => ({
                 ...prev,
                 'emoji-pitch': val
               }))
@@ -555,9 +629,8 @@ export const CreationFlow: React.FC<CreationFlowProps> = ({
             mode="create"
             data={resp['brain-pie']}
             playerName={playerName}
-            partnerName={partnerName}
             onChange={(val) =>
-              onUpdatePlayerResponses(activePlayer, (prev) => ({
+              onUpdatePlayerResponses(activePlayerIndex, (prev) => ({
                 ...prev,
                 'brain-pie': val
               }))
@@ -570,9 +643,8 @@ export const CreationFlow: React.FC<CreationFlowProps> = ({
             mode="create"
             data={resp['spicy-hill']}
             playerName={playerName}
-            partnerName={partnerName}
             onChange={(val) =>
-              onUpdatePlayerResponses(activePlayer, (prev) => ({
+              onUpdatePlayerResponses(activePlayerIndex, (prev) => ({
                 ...prev,
                 'spicy-hill': val
               }))
@@ -584,11 +656,11 @@ export const CreationFlow: React.FC<CreationFlowProps> = ({
           <Card10TwoBrains
             mode="create"
             sharedPrompt={session.sharedTwoBrainsPrompt}
+            onChangeSharedPrompt={onChangeSharedTwoBrainsPrompt}
             data={resp['two-brains']}
             playerName={playerName}
-            partnerName={partnerName}
             onChange={(val) =>
-              onUpdatePlayerResponses(activePlayer, (prev) => ({
+              onUpdatePlayerResponses(activePlayerIndex, (prev) => ({
                 ...prev,
                 'two-brains': val
               }))
@@ -601,9 +673,8 @@ export const CreationFlow: React.FC<CreationFlowProps> = ({
             mode="create"
             data={resp['dealers-choice']}
             playerName={playerName}
-            partnerName={partnerName}
             onChange={(val) =>
-              onUpdatePlayerResponses(activePlayer, (prev) => ({
+              onUpdatePlayerResponses(activePlayerIndex, (prev) => ({
                 ...prev,
                 'dealers-choice': val
               }))
@@ -649,14 +720,8 @@ export const CreationFlow: React.FC<CreationFlowProps> = ({
             gap: 8,
             padding: '6px 14px',
             borderRadius: 999,
-            background:
-              activePlayer === 'playerA'
-                ? 'var(--surface-blush)'
-                : 'var(--surface-berry-tint)',
-            border:
-              activePlayer === 'playerA'
-                ? '1px solid rgba(224, 90, 71, 0.25)'
-                : '1px solid rgba(110, 46, 83, 0.22)'
+            background: badgeStyle.bg,
+            border: `1px solid ${badgeStyle.border}`
           }}
         >
           <span
@@ -664,10 +729,7 @@ export const CreationFlow: React.FC<CreationFlowProps> = ({
               width: 8,
               height: 8,
               borderRadius: '50%',
-              background:
-                activePlayer === 'playerA'
-                  ? 'var(--accent-rose)'
-                  : 'var(--accent-berry)'
+              background: badgeStyle.dot
             }}
           />
           <span
@@ -677,7 +739,7 @@ export const CreationFlow: React.FC<CreationFlowProps> = ({
               color: 'var(--ink-primary)'
             }}
           >
-            {playerName}’s Turn
+            {playerName === 'You' ? 'Your Turn' : `${playerName}’s Turn`}
           </span>
           <span
             style={{
@@ -695,7 +757,7 @@ export const CreationFlow: React.FC<CreationFlowProps> = ({
       <div className="paper-card" style={{ padding: '20px 18px' }}>
         <TimerBar
           totalSeconds={cardMeta.timerSeconds}
-          cardKey={`${activePlayer}-${currentCardId}`}
+          cardKey={`player-${activePlayerIndex}-${currentCardId}`}
           isPaused={timerPaused}
           badgeText={cardMeta.badge}
           accentColor={cardMeta.accentColor}
@@ -750,11 +812,7 @@ export const CreationFlow: React.FC<CreationFlowProps> = ({
           style={{ flex: 1 }}
         >
           <span>
-            {isLastCard
-              ? activePlayer === 'playerA'
-                ? 'Seal My Cards'
-                : 'Slide Phone to Center & Reveal!'
-              : 'Lock In & Next Card'}
+            {isLastCard ? 'Finish My Cards →' : 'Lock In & Next Card'}
           </span>
           {isLastCard ? <CheckCircle2 size={18} /> : <ArrowRight size={18} />}
         </button>

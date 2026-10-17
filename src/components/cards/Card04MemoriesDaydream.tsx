@@ -6,7 +6,7 @@ interface Card04Props {
   mode: 'create' | 'reveal';
   data: MemoriesDaydreamData;
   playerName: string;
-  partnerName: string;
+  partnerName?: string;
   onChange: (updated: MemoriesDaydreamData) => void;
 }
 
@@ -14,7 +14,6 @@ export const Card04MemoriesDaydream: React.FC<Card04Props> = ({
   mode,
   data,
   playerName,
-  partnerName,
   onChange
 }) => {
   const [guessedIdx, setGuessedIdx] = useState<number | null>(null);
@@ -40,7 +39,8 @@ export const Card04MemoriesDaydream: React.FC<Card04Props> = ({
             marginBottom: 2
           }}
         >
-          {partnerName}: Tap the ONE story you think is {playerName}’s unlived{' '}
+          Read all 3 out loud! Have the table vote &amp; tap the ONE they think is{' '}
+          {playerName === 'You' ? 'your' : `${playerName}’s`} unlived{' '}
           <strong style={{ color: 'var(--accent-berry)' }}>Daydream</strong>:
         </div>
 

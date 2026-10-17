@@ -1,26 +1,34 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Trash2, Eye } from 'lucide-react';
-import { TwoBrainsData } from '../../types/app';
+import { Trash2, Eye, Sparkles } from 'lucide-react';
+import { PlayerState, TwoBrainsData } from '../../types/app';
+import { TWO_BRAINS_SHARED_PROMPTS } from '../../data/cardsVault';
 
 interface Card10Props {
   mode: 'create' | 'reveal';
   sharedPrompt: string;
+  onChangeSharedPrompt?: (prompt: string) => void;
   data: TwoBrainsData;
-  partnerData?: TwoBrainsData;
+  allPlayers?: PlayerState[];
   playerName: string;
-  partnerName: string;
+  partnerName?: string;
   onChange: (updated: TwoBrainsData) => void;
 }
 
 const COLORS = ['#1E161A', '#E05A47', '#3B5BDB', '#2F7A5E'];
+const BRAIN_TINTS = [
+  { accent: 'var(--accent-rose)', tint: 'var(--surface-blush)' },
+  { accent: 'var(--accent-berry)', tint: 'var(--surface-berry-tint)' },
+  { accent: 'var(--accent-sage)', tint: 'rgba(46, 109, 90, 0.08)' },
+  { accent: 'var(--accent-cobalt)', tint: 'rgba(59, 91, 153, 0.08)' }
+];
 
 export const Card10TwoBrains: React.FC<Card10Props> = ({
   mode,
   sharedPrompt,
+  onChangeSharedPrompt,
   data,
-  partnerData,
+  allPlayers,
   playerName,
-  partnerName,
   onChange
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -110,7 +118,22 @@ export const Card10TwoBrains: React.FC<Card10Props> = ({
     onChange({ ...data, sketchDataUrl: '' });
   };
 
+  const currentPromptIdx = Math.max(
+    0,
+    TWO_BRAINS_SHARED_PROMPTS.indexOf(sharedPrompt)
+  );
+
+  const handleCyclePrompt = () => {
+    const nextIdx = (currentPromptIdx + 1) % TWO_BRAINS_SHARED_PROMPTS.length;
+    const nextPrompt = TWO_BRAINS_SHARED_PROMPTS[nextIdx];
+    onChangeSharedPrompt?.(nextPrompt);
+    onChange({ ...data, promptIndex: nextIdx });
+  };
+
   if (mode === 'reveal') {
+    const multiPlayers =
+      allPlayers && allPlayers.length > 1 ? allPlayers : null;
+
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div
@@ -124,113 +147,178 @@ export const Card10TwoBrains: React.FC<Card10Props> = ({
             textAlign: 'center'
           }}
         >
-          Shared Prompt: “{sharedPrompt}”
+          Prompt #{currentPromptIdx + 1}: “{sharedPrompt}”
         </div>
 
-        {!unfolded ? (
-          <button
-            type="button"
-            onClick={() => setUnfolded(true)}
-            className="btn-primary-brass"
-            style={{ width: '100%', padding: '20px' }}
-          >
-            <Eye size={18} />
-            <span>
-              Tap to Unfold {playerName} &amp; {partnerName} Side-by-Side!
-            </span>
-          </button>
-        ) : (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: 10
-            }}
-          >
-            {[
-              {
-                name: playerName,
-                item: data,
-                accent: 'var(--accent-rose)',
-                tint: 'var(--surface-blush)'
-              },
-              {
-                name: partnerName,
-                item: partnerData || { sketchDataUrl: '', caption: '' },
-                accent: 'var(--accent-berry)',
-                tint: 'var(--surface-berry-tint)'
-              }
-            ].map((brain, idx) => (
-              <div
-                key={idx}
-                style={{
-                  background: brain.tint,
-                  borderRadius: 18,
-                  padding: 10,
-                  border: '1px solid var(--border-hairline)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 8
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: '0.74rem',
-                    fontWeight: 700,
-                    color: brain.accent
-                  }}
-                >
-                  {brain.name}’s Brain
-                </div>
-
-                <div
-                  style={{
-                    aspectRatio: '1 / 1',
-                    background: '#FAF6F0',
-                    borderRadius: 12,
-                    border: '1px solid var(--border-subtle)',
-                    overflow: 'hidden',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                >
-                  {brain.item.sketchDataUrl ? (
-                    <img
-                      src={brain.item.sketchDataUrl}
-                      alt={`${brain.name} brain`}
+        {multiPlayers ? (
+          !unfolded ? (
+            <button
+              type="button"
+              onClick={() => setUnfolded(true)}
+              className="btn-primary-brass"
+              style={{ width: '100%', padding: '20px' }}
+            >
+              <Eye size={18} />
+              <span>
+                Tap to Unfold All {multiPlayers.length} Brains Side-by-Side!
+              </span>
+            </button>
+          ) : (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: 10
+              }}
+            >
+              {multiPlayers.map((p, idx) => {
+                const name = p.name.trim() || `Person ${idx + 1}`;
+                const item = p.responses['two-brains'];
+                const style = BRAIN_TINTS[idx % BRAIN_TINTS.length];
+                return (
+                  <div
+                    key={p.id || idx}
+                    style={{
+                      background: style.tint,
+                      borderRadius: 18,
+                      padding: 10,
+                      border: '1px solid var(--border-hairline)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 8
+                    }}
+                  >
+                    <div
                       style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'contain'
-                      }}
-                    />
-                  ) : (
-                    <span
-                      style={{
-                        fontSize: '0.73rem',
-                        color: 'var(--ink-muted)',
-                        textAlign: 'center',
-                        padding: 8
+                        fontSize: '0.74rem',
+                        fontWeight: 700,
+                        color: style.accent
                       }}
                     >
-                      (Verbal take!)
-                    </span>
-                  )}
-                </div>
+                      {name}’s Brain
+                    </div>
 
-                <div
-                  className="font-hand"
+                    <div
+                      style={{
+                        aspectRatio: '1 / 1',
+                        background: '#FAF6F0',
+                        borderRadius: 12,
+                        border: '1px solid var(--border-subtle)',
+                        overflow: 'hidden',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      {item.sketchDataUrl ? (
+                        <img
+                          src={item.sketchDataUrl}
+                          alt={`${name} brain`}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'contain'
+                          }}
+                        />
+                      ) : (
+                        <span
+                          style={{
+                            fontSize: '0.73rem',
+                            color: 'var(--ink-muted)',
+                            textAlign: 'center',
+                            padding: 8
+                          }}
+                        >
+                          (Verbal take!)
+                        </span>
+                      )}
+                    </div>
+
+                    <div
+                      className="font-hand"
+                      style={{
+                        fontSize: '1.15rem',
+                        color: 'var(--ink-primary)',
+                        lineHeight: 1.2
+                      }}
+                    >
+                      “{item.caption || 'Here is how my brain sees it'}”
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )
+        ) : (
+          /* Single Phone Owner Reveal: Full card + instruction to place phones side-by-side at the table */
+          <div
+            style={{
+              background: 'var(--surface-blush)',
+              borderRadius: 20,
+              padding: 14,
+              border: '1px solid var(--border-hairline)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 10,
+              textAlign: 'center'
+            }}
+          >
+            <div
+              style={{
+                fontSize: '0.76rem',
+                fontWeight: 700,
+                color: 'var(--accent-rose-deep)'
+              }}
+            >
+              Place phones side-by-side in the center of the table to compare!
+            </div>
+
+            <div
+              style={{
+                aspectRatio: '4 / 3',
+                background: '#FAF6F0',
+                borderRadius: 14,
+                border: '1px solid var(--border-subtle)',
+                overflow: 'hidden',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              {data.sketchDataUrl ? (
+                <img
+                  src={data.sketchDataUrl}
+                  alt={`${playerName} brain`}
                   style={{
-                    fontSize: '1.15rem',
-                    color: 'var(--ink-primary)',
-                    lineHeight: 1.2
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'contain'
+                  }}
+                />
+              ) : (
+                <span
+                  style={{
+                    fontSize: '0.84rem',
+                    color: 'var(--ink-muted)',
+                    padding: 12
                   }}
                 >
-                  “{brain.item.caption || 'Here is how my brain sees it'}”
-                </div>
-              </div>
-            ))}
+                  ({playerName === 'You' ? 'You' : playerName} kept it verbal —
+                  describe your version live!)
+                </span>
+              )}
+            </div>
+
+            <div
+              className="font-hand"
+              style={{
+                fontSize: '1.35rem',
+                color: 'var(--ink-primary)',
+                lineHeight: 1.2
+              }}
+            >
+              “{data.caption || 'Here is how my brain sees it'}”
+            </div>
           </div>
         )}
       </div>
@@ -241,16 +329,46 @@ export const Card10TwoBrains: React.FC<Card10Props> = ({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div
         style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 8,
           background: 'rgba(59, 91, 219, 0.08)',
           padding: '10px 14px',
           borderRadius: 16,
-          border: '1px solid rgba(59, 91, 219, 0.2)',
-          fontSize: '0.84rem',
-          fontWeight: 700,
-          color: 'var(--accent-cobalt)'
+          border: '1px solid rgba(59, 91, 219, 0.2)'
         }}
       >
-        👯 Shared Prompt: “{sharedPrompt}”
+        <div
+          style={{
+            fontSize: '0.82rem',
+            fontWeight: 700,
+            color: 'var(--accent-cobalt)'
+          }}
+        >
+          👯 Prompt #{currentPromptIdx + 1}: “{sharedPrompt}”
+        </div>
+        <button
+          type="button"
+          onClick={handleCyclePrompt}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+            padding: '5px 10px',
+            borderRadius: 999,
+            border: '1px solid rgba(59, 91, 219, 0.25)',
+            background: '#FFFFFF',
+            fontSize: '0.72rem',
+            fontWeight: 700,
+            cursor: 'pointer',
+            flexShrink: 0,
+            color: 'var(--accent-cobalt)'
+          }}
+        >
+          <Sparkles size={11} />
+          <span>Prompt #{((currentPromptIdx + 1) % TWO_BRAINS_SHARED_PROMPTS.length) + 1}</span>
+        </button>
       </div>
 
       {/* Mini Sketch Pad */}

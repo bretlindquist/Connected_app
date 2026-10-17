@@ -6,7 +6,7 @@ interface Card07Props {
   mode: 'create' | 'reveal';
   data: EmojiPitchData;
   playerName: string;
-  partnerName: string;
+  partnerName?: string;
   onChange: (updated: EmojiPitchData) => void;
 }
 
@@ -39,7 +39,6 @@ export const Card07EmojiPitch: React.FC<Card07Props> = ({
   mode,
   data,
   playerName,
-  partnerName,
   onChange
 }) => {
   const [activeSlot, setActiveSlot] = useState<0 | 1 | 2>(0);
@@ -126,7 +125,7 @@ export const Card07EmojiPitch: React.FC<Card07Props> = ({
             >
               <Eye size={15} />
               <span>
-                Let {partnerName} guess the plot · Tap to flip coaster
+                Let the table guess the plot · Tap to flip coaster
               </span>
             </button>
           ) : (

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, Award } from 'lucide-react';
+import { Sparkles, Award, UserCheck } from 'lucide-react';
 import { GutReadData } from '../../types/app';
 import { GUT_READ_STEMS } from '../../data/cardsVault';
 
@@ -7,7 +7,7 @@ interface Card05Props {
   mode: 'create' | 'reveal';
   data: GutReadData;
   playerName: string;
-  partnerName: string;
+  partnerName?: string;
   onChange: (updated: GutReadData) => void;
 }
 
@@ -15,11 +15,11 @@ export const Card05GutRead: React.FC<Card05Props> = ({
   mode,
   data,
   playerName,
-  partnerName,
   onChange
 }) => {
   const currentStemObj =
     GUT_READ_STEMS[data.stemIndex] || GUT_READ_STEMS[0];
+  const targetLabel = data.targetPerson?.trim() || '';
 
   const handleCycleStem = () => {
     const nextIdx = (data.stemIndex + 1) % GUT_READ_STEMS.length;
@@ -51,7 +51,7 @@ export const Card05GutRead: React.FC<Card05Props> = ({
       },
       {
         id: 'totally-wrong',
-        label: '😂 Way Off (Tell Me Why!)',
+        label: '😂 Way Off (Tell Us Why!)',
         color: '#E05A47',
         bg: 'var(--accent-rose-soft)'
       }
@@ -76,7 +76,8 @@ export const Card05GutRead: React.FC<Card05Props> = ({
               marginBottom: 6
             }}
           >
-            {playerName}’s Gut-Read About {partnerName}
+            {playerName === 'You' ? 'Your' : `${playerName}’s`} Gut-Read{' '}
+            {targetLabel ? `About ${targetLabel}` : 'for the Table'}
           </div>
 
           <div
@@ -106,7 +107,7 @@ export const Card05GutRead: React.FC<Card05Props> = ({
           </div>
         </div>
 
-        {/* Partner Stamp Buttons */}
+        {/* Table Verdict Stamp Buttons */}
         <div>
           <div
             style={{
@@ -121,7 +122,8 @@ export const Card05GutRead: React.FC<Card05Props> = ({
               color="var(--accent-rose)"
               style={{ verticalAlign: 'middle', marginRight: 5 }}
             />
-            {partnerName}, stamp your official verdict:
+            {targetLabel ? `${targetLabel}, stamp` : 'Table Verdict — stamp'} how
+            close this gut-read was:
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {stamps.map((st) => {
@@ -175,6 +177,43 @@ export const Card05GutRead: React.FC<Card05Props> = ({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Optional Target Person at the Table */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          background: 'var(--surface-subtle)',
+          padding: '8px 12px',
+          borderRadius: 14,
+          border: '1px solid var(--border-hairline)'
+        }}
+      >
+        <UserCheck
+          size={15}
+          color="var(--accent-cobalt)"
+          style={{ flexShrink: 0 }}
+        />
+        <input
+          type="text"
+          value={data.targetPerson || ''}
+          onChange={(e) =>
+            onChange({ ...data, targetPerson: e.target.value })
+          }
+          placeholder="Who at the table is this about? (optional — e.g. Sam, person on my left)"
+          style={{
+            border: 'none',
+            background: 'transparent',
+            outline: 'none',
+            width: '100%',
+            fontSize: '0.8rem',
+            fontWeight: 600,
+            color: 'var(--ink-primary)'
+          }}
+          maxLength={36}
+        />
+      </div>
+
       {/* Stem Selector */}
       <div
         style={{
@@ -247,7 +286,8 @@ export const Card05GutRead: React.FC<Card05Props> = ({
             marginBottom: 6
           }}
         >
-          Tap a quick read about {partnerName}, or write your own below:
+          Tap a quick gut-read{targetLabel ? ` about ${targetLabel}` : ''}, or
+          write your own below:
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {currentStemObj.chips.map((chip) => {
@@ -288,7 +328,7 @@ export const Card05GutRead: React.FC<Card05Props> = ({
         className="paper-input"
         value={data.prediction}
         onChange={(e) => onChange({ ...data, prediction: e.target.value })}
-        placeholder={`Write your playful gut-read about ${partnerName}...`}
+        placeholder={`Write your playful gut-read${targetLabel ? ` about ${targetLabel}` : ''}...`}
         maxLength={90}
       />
     </div>

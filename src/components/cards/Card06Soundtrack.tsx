@@ -7,7 +7,7 @@ interface Card06Props {
   mode: 'create' | 'reveal';
   data: SoundtrackData;
   playerName: string;
-  partnerName: string;
+  partnerName?: string;
   onChange: (updated: SoundtrackData) => void;
 }
 

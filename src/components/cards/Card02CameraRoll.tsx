@@ -7,7 +7,7 @@ interface Card02Props {
   mode: 'create' | 'reveal';
   data: CameraRollData;
   playerName: string;
-  partnerName: string;
+  partnerName?: string;
   onPauseTimer?: (paused: boolean) => void;
   onChange: (updated: CameraRollData) => void;
 }

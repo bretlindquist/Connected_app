@@ -7,7 +7,7 @@ interface Card03Props {
   mode: 'create' | 'reveal';
   data: DropPinData;
   playerName: string;
-  partnerName: string;
+  partnerName?: string;
   onChange: (updated: DropPinData) => void;
 }
 

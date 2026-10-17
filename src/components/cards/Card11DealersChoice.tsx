@@ -7,7 +7,7 @@ interface Card11Props {
   mode: 'create' | 'reveal';
   data: DealersChoiceData;
   playerName: string;
-  partnerName: string;
+  partnerName?: string;
   onChange: (updated: DealersChoiceData) => void;
 }
 

@@ -6,7 +6,7 @@ interface Card08Props {
   mode: 'create' | 'reveal';
   data: BrainPieData;
   playerName: string;
-  partnerName: string;
+  partnerName?: string;
   onChange: (updated: BrainPieData) => void;
 }
 

@@ -19,6 +19,13 @@ interface KeepsakeViewProps {
   onStartNewSession: () => void;
 }
 
+const ACCENT_PALETTE = [
+  'var(--accent-rose)',
+  'var(--accent-berry)',
+  'var(--accent-sage)',
+  'var(--accent-cobalt)'
+];
+
 export const KeepsakeView: React.FC<KeepsakeViewProps> = ({
   session,
   onBackToReveal,
@@ -29,16 +36,23 @@ export const KeepsakeView: React.FC<KeepsakeViewProps> = ({
   const [sharedLinkCopied, setSharedLinkCopied] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  const playerAName = session.playerA.name.trim() || 'Person 1';
-  const playerBName = session.playerB.name.trim() || 'Person 2';
+  const players = session.players;
+  const isSinglePlayer = players.length === 1;
+  const ownerName = players[0]?.name?.trim() || 'My';
+
+  const headerTitle = isSinglePlayer
+    ? ownerName === 'My'
+      ? 'My Table Deck'
+      : `${ownerName}’s Table Deck`
+    : players
+        .map((p, idx) => p.name.trim() || `Person ${idx + 1}`)
+        .join(' · ');
+
   const dateStr = new Date(session.createdAt).toLocaleDateString(undefined, {
     month: 'short',
     day: 'numeric',
     year: 'numeric'
   });
-
-  const sketchA = session.playerA.responses['napkin-sketch'];
-  const sketchB = session.playerB.responses['napkin-sketch'];
 
   const handleDownloadPostcard = async () => {
     setDownloading(true);
@@ -65,13 +79,12 @@ export const KeepsakeView: React.FC<KeepsakeViewProps> = ({
       // Header text
       ctx.fillStyle = '#E05A47';
       ctx.font = 'bold 24px "Plus Jakarta Sans", sans-serif';
-      ctx.fillText(`TABLE FOR TWO  •  ${dateStr.toUpperCase()}`, 108, 135);
+      ctx.fillText(`CONNECTED · AROUND THE TABLE  •  ${dateStr.toUpperCase()}`, 108, 135);
 
       ctx.fillStyle = '#1E161A';
-      ctx.font = 'bold 54px "Fraunces", Georgia, serif';
-      ctx.fillText(`${playerAName} & ${playerBName}`, 108, 205);
+      ctx.font = 'bold 50px "Fraunces", Georgia, serif';
+      ctx.fillText(headerTitle.slice(0, 34), 108, 205);
 
-      // Draw both sketches side-by-side if present
       const loadImg = (src: string): Promise<HTMLImageElement | null> =>
         new Promise((resolve) => {
           if (!src) return resolve(null);
@@ -81,57 +94,65 @@ export const KeepsakeView: React.FC<KeepsakeViewProps> = ({
           img.src = src;
         });
 
-      const [imgA, imgB] = await Promise.all([
-        loadImg(sketchA.imageDataUrl),
-        loadImg(sketchB.imageDataUrl)
-      ]);
+      if (isSinglePlayer) {
+        const sketch = players[0].responses['napkin-sketch'];
+        const img = await loadImg(sketch.imageDataUrl);
+        ctx.fillStyle = '#FAF6F0';
+        ctx.fillRect(310, 245, 460, 460);
+        if (img) ctx.drawImage(img, 322, 257, 436, 436);
+        ctx.fillStyle = '#1E161A';
+        ctx.font = 'bold 28px "Plus Jakarta Sans", sans-serif';
+        ctx.fillText(
+          `"${sketch.caption || '60s Napkin Sketch'}"`,
+          108,
+          750
+        );
+      } else {
+        const firstTwo = players.slice(0, 2);
+        const imgs = await Promise.all(
+          firstTwo.map((p) => loadImg(p.responses['napkin-sketch'].imageDataUrl))
+        );
 
-      // Frame A
-      ctx.fillStyle = '#FAF6F0';
-      ctx.fillRect(108, 250, 415, 415);
-      if (imgA) ctx.drawImage(imgA, 118, 260, 395, 395);
-      ctx.fillStyle = '#1E161A';
-      ctx.font = 'bold 26px "Plus Jakarta Sans", sans-serif';
-      ctx.fillText(
-        `${playerAName}: "${sketchA.caption || '60s Napkin Sketch'}"`,
-        108,
-        705
-      );
-
-      // Frame B
-      ctx.fillStyle = '#FAF6F0';
-      ctx.fillRect(555, 250, 415, 415);
-      if (imgB) ctx.drawImage(imgB, 565, 260, 395, 395);
-      ctx.fillStyle = '#1E161A';
-      ctx.font = 'bold 26px "Plus Jakarta Sans", sans-serif';
-      ctx.fillText(
-        `${playerBName}: "${sketchB.caption || '60s Napkin Sketch'}"`,
-        555,
-        705
-      );
+        firstTwo.forEach((p, idx) => {
+          const x = idx === 0 ? 108 : 555;
+          const pName = p.name.trim() || `Person ${idx + 1}`;
+          const sketch = p.responses['napkin-sketch'];
+          ctx.fillStyle = '#FAF6F0';
+          ctx.fillRect(x, 250, 415, 415);
+          if (imgs[idx]) ctx.drawImage(imgs[idx]!, x + 10, 260, 395, 395);
+          ctx.fillStyle = '#1E161A';
+          ctx.font = 'bold 24px "Plus Jakarta Sans", sans-serif';
+          ctx.fillText(
+            `${pName}: "${(sketch.caption || '60s Sketch').slice(0, 24)}"`,
+            x,
+            705
+          );
+        });
+      }
 
       // Highlights section
       ctx.fillStyle = '#E05A47';
       ctx.font = 'bold 24px "Plus Jakarta Sans", sans-serif';
-      ctx.fillText('OUR TABLE HIGHLIGHTS', 108, 790);
+      ctx.fillText('TABLE HIGHLIGHTS', 108, 810);
 
-      let y = 845;
+      let y = 860;
+      const p0 = players[0].responses;
       session.activeCardIds.slice(0, 5).forEach((cId, i) => {
         const meta = CARDS_VAULT[cId];
         ctx.fillStyle = '#1E161A';
         ctx.font = 'bold 28px "Fraunces", Georgia, serif';
         ctx.fillText(`${i + 1}. ${meta.title}`, 108, y);
-        y += 42;
+        y += 40;
 
         let detail = '';
         if (cId === 'drop-pin') {
-          detail = `${playerAName}: ${session.playerA.responses['drop-pin'].label}  |  ${playerBName}: ${session.playerB.responses['drop-pin'].label}`;
+          detail = `📍 ${p0['drop-pin'].label}`;
         } else if (cId === 'spicy-hill') {
-          detail = `"${session.playerA.responses['spicy-hill'].opinion.slice(0, 42)}..."`;
+          detail = `"${p0['spicy-hill'].opinion.slice(0, 52)}..."`;
         } else if (cId === 'emoji-pitch') {
-          detail = `${session.playerA.responses['emoji-pitch'].emojis.join('')}  &  ${session.playerB.responses['emoji-pitch'].emojis.join('')}`;
+          detail = `${p0['emoji-pitch'].emojis.join('')} — ${p0['emoji-pitch'].storyTitle}`;
         } else if (cId === 'soundtrack') {
-          detail = `🎵 ${session.playerA.responses.soundtrack.trackName}  •  🎵 ${session.playerB.responses.soundtrack.trackName}`;
+          detail = `🎵 ${p0.soundtrack.trackName} — ${p0.soundtrack.artistName}`;
         } else {
           detail = meta.shortTitle;
         }
@@ -139,7 +160,7 @@ export const KeepsakeView: React.FC<KeepsakeViewProps> = ({
         ctx.fillStyle = '#5E5258';
         ctx.font = '24px "Plus Jakarta Sans", sans-serif';
         ctx.fillText(detail.slice(0, 68), 108, y);
-        y += 56;
+        y += 54;
       });
 
       ctx.fillStyle = '#94878D';
@@ -149,7 +170,7 @@ export const KeepsakeView: React.FC<KeepsakeViewProps> = ({
       const url = canvas.toDataURL('image/png');
       const a = document.createElement('a');
       a.href = url;
-      a.download = `table-for-two-${playerAName.toLowerCase()}-${playerBName.toLowerCase()}.png`;
+      a.download = `connected-table-postcard.png`;
       a.click();
     } finally {
       setDownloading(false);
@@ -161,8 +182,8 @@ export const KeepsakeView: React.FC<KeepsakeViewProps> = ({
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `Table for Two — ${playerAName} & ${playerBName}`,
-          text: 'Check out our Table for Two sketches & stories!',
+          title: `Connected — ${headerTitle}`,
+          text: 'Play this connection card pack at the table!',
           url: shareUrl
         });
         return;
@@ -217,28 +238,18 @@ export const KeepsakeView: React.FC<KeepsakeViewProps> = ({
                 marginBottom: 6
               }}
             >
-              <Heart size={11} fill="currentColor" /> Souvenir Postcard
+              <Heart size={11} fill="currentColor" /> Table Souvenir Postcard
             </span>
             <h1
               className="font-display"
               style={{
                 margin: 0,
-                fontSize: '1.65rem',
+                fontSize: '1.6rem',
                 lineHeight: 1.15,
                 color: 'var(--ink-primary)'
               }}
             >
-              {playerAName}{' '}
-              <span
-                style={{
-                  fontStyle: 'italic',
-                  color: 'var(--accent-rose)',
-                  fontWeight: 500
-                }}
-              >
-                &amp;
-              </span>{' '}
-              {playerBName}
+              {headerTitle}
             </h1>
           </div>
           <div style={{ textAlign: 'right' }}>
@@ -258,90 +269,98 @@ export const KeepsakeView: React.FC<KeepsakeViewProps> = ({
                 fontWeight: 700
               }}
             >
-              {session.activeCardIds.length} Cards Shared
+              {session.activeCardIds.length}{' '}
+              {session.activeCardIds.length === 1 ? 'Card' : 'Cards'} Shared
             </div>
           </div>
         </div>
 
-        {/* Side-by-Side Polaroid Napkin Sketches */}
+        {/* Polaroid Napkin Sketch(es) — Centered Hero if 1 player on phone, Grid if multiple */}
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
+            gridTemplateColumns: isSinglePlayer ? '1fr' : '1fr 1fr',
             gap: 12
           }}
         >
-          {[
-            { name: playerAName, sketch: sketchA, accent: 'var(--accent-rose)' },
-            { name: playerBName, sketch: sketchB, accent: 'var(--accent-berry)' }
-          ].map((item, idx) => (
-            <div
-              key={idx}
-              style={{
-                background: 'var(--bg-canvas)',
-                borderRadius: 18,
-                padding: 10,
-                border: '1px solid var(--border-hairline)',
-                boxShadow: 'var(--shadow-pill)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 6
-              }}
-            >
+          {players.map((p, idx) => {
+            const pName =
+              p.name.trim() || (idx === 0 ? 'Your' : `Person ${idx + 1}`);
+            const sketch = p.responses['napkin-sketch'];
+            const accent = ACCENT_PALETTE[idx % ACCENT_PALETTE.length];
+
+            return (
               <div
+                key={p.id || idx}
                 style={{
-                  aspectRatio: '1 / 1',
-                  background: '#FFFFFF',
-                  borderRadius: 12,
-                  overflow: 'hidden',
+                  background: 'var(--bg-canvas)',
+                  borderRadius: 18,
+                  padding: isSinglePlayer ? 14 : 10,
+                  border: '1px solid var(--border-hairline)',
+                  boxShadow: 'var(--shadow-pill)',
                   display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: '1px solid var(--border-hairline)'
+                  flexDirection: 'column',
+                  gap: 6,
+                  maxWidth: isSinglePlayer ? 320 : 'none',
+                  margin: isSinglePlayer ? '0 auto' : 0,
+                  width: '100%'
                 }}
               >
-                {item.sketch.imageDataUrl ? (
-                  <img
-                    src={item.sketch.imageDataUrl}
-                    alt={`${item.name} sketch`}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'contain'
-                    }}
-                  />
-                ) : (
-                  <span
-                    style={{
-                      fontSize: '0.74rem',
-                      color: 'var(--ink-muted)'
-                    }}
-                  >
-                    No sketch
-                  </span>
-                )}
+                <div
+                  style={{
+                    aspectRatio: '1 / 1',
+                    background: '#FFFFFF',
+                    borderRadius: 12,
+                    overflow: 'hidden',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '1px solid var(--border-hairline)'
+                  }}
+                >
+                  {sketch.imageDataUrl ? (
+                    <img
+                      src={sketch.imageDataUrl}
+                      alt={`${pName} sketch`}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain'
+                      }}
+                    />
+                  ) : (
+                    <span
+                      style={{
+                        fontSize: '0.74rem',
+                        color: 'var(--ink-muted)'
+                      }}
+                    >
+                      No sketch
+                    </span>
+                  )}
+                </div>
+                <div
+                  style={{
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    color: accent
+                  }}
+                >
+                  {pName === 'Your' ? 'Your 60s Napkin Sketch' : `${pName}’s Sketch`}
+                </div>
+                <div
+                  className="font-hand"
+                  style={{
+                    fontSize: isSinglePlayer ? '1.25rem' : '1.05rem',
+                    lineHeight: 1.15,
+                    color: 'var(--ink-primary)'
+                  }}
+                >
+                  “{sketch.caption || 'My 60s creation'}”
+                </div>
               </div>
-              <div
-                style={{
-                  fontSize: '0.72rem',
-                  fontWeight: 700,
-                  color: item.accent
-                }}
-              >
-                {item.name}’s Sketch
-              </div>
-              <div
-                className="font-hand"
-                style={{
-                  fontSize: '1.05rem',
-                  lineHeight: 1.15,
-                  color: 'var(--ink-primary)'
-                }}
-              >
-                “{item.sketch.caption || 'My 60s creation'}”
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Clean Editorial Story Highlights List */}
@@ -354,7 +373,7 @@ export const KeepsakeView: React.FC<KeepsakeViewProps> = ({
               marginBottom: 4
             }}
           >
-            Stories from the Table
+            Cards Played at the Table
           </div>
 
           {session.activeCardIds.map((cardId, idx) => {
@@ -432,7 +451,7 @@ export const KeepsakeView: React.FC<KeepsakeViewProps> = ({
             ) : (
               <Share2 size={16} color="var(--accent-rose)" />
             )}
-            <span>{sharedLinkCopied ? 'Link Copied!' : 'Share Table Link'}</span>
+            <span>{sharedLinkCopied ? 'Link Copied!' : 'Share Pack Link'}</span>
           </button>
 
           <button
